@@ -1,0 +1,55 @@
+<assembly xmlns="http://maven.apache.org/ASSEMBLY/2.1.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/ASSEMBLY/2.1.0 http://maven.apache.org/xsd/assembly-2.1.0.xsd">
+    
+    <id>dist</id>
+    <includeBaseDirectory>true</includeBaseDirectory>
+    
+    <formats>
+    	<format>zip</format>
+    	<format>tar.gz</format>
+    </formats>
+    
+    <fileSets>
+    	<fileSet>
+    		<includes>
+    			<!--
+    			<include>boot.bat</include>
+    			<include>boot.sh</include>
+    			<include>INSTALLINFO</include>
+    			-->
+    			<include>examples/</include>
+    		</includes>
+    	</fileSet>
+    </fileSets>
+    
+    <files>
+    	<file>
+    		<source>${project.build.directory}/${project.artifactId}-${project.version}.jar</source>
+    		<destName>${enterPoint}.jar</destName>
+    		<outputDirectory>/</outputDirectory>
+    	</file>
+    	<file>
+    		<source>${project.build.outputDirectory}/boot.sh</source>
+    		<outputDirectory>/</outputDirectory>
+    	</file>
+    	<file>
+    		<source>${project.build.outputDirectory}/boot.bat</source>
+    		<outputDirectory>/</outputDirectory>
+    	</file>
+    	<file>
+    		<source>${project.build.outputDirectory}/INSTALLINFO</source>
+    		<outputDirectory>/</outputDirectory>
+    	</file>
+    </files>
+    
+    <dependencySets>
+    	<dependencySet>
+    		<outputDirectory>libs</outputDirectory>
+    		<excludes>
+    			<exclude>${project.groupId}:${project.artifactId}:jar:*</exclude>
+    		</excludes>
+    	</dependencySet>
+    </dependencySets>
+    
+ </assembly>
