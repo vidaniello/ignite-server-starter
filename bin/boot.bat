@@ -25,7 +25,7 @@ goto doHelp
 :doStart
 set "_JAVA_BIN_EXEC=%JRE_HOME%\bin\java"
 if "%JRE_HOME%"=="" (set "_JAVA_BIN_EXEC=java")
-set "_COMMAND_LINE_ARG=-Xmx%MAX_MEMORY%"
+set "_COMMAND_LINE_ARG=-Xmx%MAX_MEMORY% -DIGNITE_PERFORMANCE_SUGGESTIONS_DISABLED=true -XX:+UseG1GC -Xms512m -XX:+DisableExplicitGC"
 %_JAVA_BIN_EXEC% %_COMMAND_LINE_ARG% -jar ${enterPoint}.jar %BOOTLOADER_HTTP_PORT%
 goto end
 

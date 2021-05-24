@@ -21,7 +21,7 @@ case $1 in
 		then
 			export "_JAVA_BIN_EXEC=java"
 		fi
-		export "_COMMAND_LINE_ARG=-Xmx$MAX_MEMORY"
+		export "_COMMAND_LINE_ARG=-Xmx$MAX_MEMORY -DIGNITE_PERFORMANCE_SUGGESTIONS_DISABLED=true -XX:+UseG1GC -Xms512m -XX:+DisableExplicitGC"
 		$_JAVA_BIN_EXEC "$_COMMAND_LINE_ARG" -jar ${enterPoint}.jar "$BOOTLOADER_HTTP_PORT"
 		;;
 	stop)
