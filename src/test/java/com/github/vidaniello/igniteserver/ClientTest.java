@@ -6,6 +6,7 @@ import org.apache.ignite.configuration.IgniteConfiguration;
 import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
 import org.apache.ignite.spi.discovery.tcp.ipfinder.multicast.TcpDiscoveryMulticastIpFinder;
 import org.jetbrains.annotations.TestOnly;
+import org.junit.Ignore;
 import org.junit.Test;
 
 public class ClientTest {
@@ -13,7 +14,7 @@ public class ClientTest {
 	/**
 	 * On ignite started instance, execute this test
 	 */
-	@Test
+	@Test @Ignore
 	public void testOne() {
 		IgniteConfiguration conf = new IgniteConfiguration();
 		conf.setClientMode(true);
