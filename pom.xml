@@ -96,6 +96,8 @@
 		        	<exclude>boot.sh</exclude>
 		        	<exclude>boot.bat</exclude>
 		        	<exclude>INSTALLINFO</exclude>
+		        	<exclude>ignite_node.properties</exclude>
+		        	<exclude>igniteNode.xml</exclude>
 		        </excludes>
 		    </configuration>
 		</plugin>
