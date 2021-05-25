@@ -26,7 +26,7 @@ case $1 in
 			export "_JAVA_BIN_EXEC=java"
 		fi
 		export "_COMMAND_LINE_ARG=-Xmx$MAX_MEMORY -DIGNITE_PERFORMANCE_SUGGESTIONS_DISABLED=true -XX:+UseG1GC -Xms512m -XX:+DisableExplicitGC -Dfile.encoding=UTF-8 -DIGNITE_NODE_PROP_FILE=$IGNITE_NODE_PROP_FILE"
-		$_JAVA_BIN_EXEC "$_COMMAND_LINE_ARG" -jar ${enterPoint}.jar "$BOOTLOADER_HTTP_PORT"
+		$_JAVA_BIN_EXEC $_COMMAND_LINE_ARG -jar ${enterPoint}.jar $BOOTLOADER_HTTP_PORT
 		;;
 	stop)
 		curl "$_HTTP_BASE""stop"
