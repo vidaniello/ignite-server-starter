@@ -14,7 +14,7 @@ public class ClientTest {
 	/**
 	 * On ignite started instance, execute this test
 	 */
-	@Test //@Ignore
+	@Test @Ignore
 	public void testOne() {
 		IgniteConfiguration conf = new IgniteConfiguration();
 		conf.setClientMode(true);
