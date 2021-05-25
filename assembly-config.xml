@@ -41,6 +41,14 @@
     		<source>${project.build.outputDirectory}/INSTALLINFO</source>
     		<outputDirectory>/</outputDirectory>
     	</file>
+    	<file>
+    		<source>${project.build.outputDirectory}/ignite_node.properties</source>
+    		<outputDirectory>/</outputDirectory>
+    	</file>
+    	<file>
+    		<source>${project.build.outputDirectory}/igniteNode.xml</source>
+    		<outputDirectory>/</outputDirectory>
+    	</file>
     </files>
     
     <dependencySets>
