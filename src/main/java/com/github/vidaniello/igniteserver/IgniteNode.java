@@ -373,7 +373,7 @@ public class IgniteNode {
 			str.append("getNonHeapMemoryUsed-------: "+mbnhmu+"\n");
 			*/
 						
-			str.append("Node cpus-------: "+cm.getTotalCpus()+"\n");
+			str.append("Grid CPUs-------: "+cm.getTotalCpus()+"\n");
 			str.append("Grid Max RAM----: "+totalHeap+"\n");
 			str.append("Grid used RAM---: "+usedHeap+"\n");
 			str.append("Servers node----: "+servers+"\n");
