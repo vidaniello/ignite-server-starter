@@ -22,6 +22,7 @@ if ""%1"" == ""stopnode"" goto doStopnode
 if ""%1"" == ""restart"" goto doRestart
 if ""%1"" == ""status"" goto doStatus
 if ""%1"" == ""help"" goto doHelp
+if ""%1"" == ""switchclusterstate"" goto doSwitchclusterstate
 if ""%1"" == ""?"" goto doHelp
 goto doHelp
 
@@ -56,6 +57,9 @@ goto end
 curl "%_HTTP_BASE%help"
 goto end
 
+:doSwitchclusterstate
+curl "%_HTTP_BASE%switchclusterstate"
+goto end
 
 
 :end

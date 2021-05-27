@@ -40,6 +40,9 @@ case $1 in
 	status)
 		curl "$_HTTP_BASE""status"
 		;;
+	switchclusterstate)
+		curl "$_HTTP_BASE""switchclusterstate"
+		;;
 	help|?|*)
 		curl "$_HTTP_BASE""help"
 		;;
