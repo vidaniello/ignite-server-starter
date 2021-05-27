@@ -80,13 +80,12 @@ public class IgniteNode {
 		System.setProperty("java.net.preferIPv4Stack", "true");
 	}
 	
-	public void startNode() throws Exception{
+	public synchronized void startNode() throws Exception{
 		
 		loadConfiguration();
 		
 		//Starting
 		igniteInstance = Ignition.start(conf);
-		
 		
 		if(activeClusterAfterNodeStart!=null || baselineAutoAdjustEnabled!=null || baselineAutoAdjustTimeout!=null) {
 		
@@ -306,9 +305,10 @@ public class IgniteNode {
 		
 	}
 	
-	public void stopNode() {
+	public synchronized void stopNode() {
 		try {
-			igniteInstance.close();
+			if(igniteInstance!=null)
+				igniteInstance.close();
 			
 			
 			igniteInstance = null;
@@ -318,7 +318,7 @@ public class IgniteNode {
 		}
 	}
 	
-	public String switchClusterState() {
+	public synchronized String switchClusterState() {
 		String outMessage = "";
 		try {
 			if(igniteInstance!=null) {
@@ -347,7 +347,7 @@ public class IgniteNode {
 		return outMessage;
 	}
 
-	public String getNodeStatus() {
+	public synchronized String getNodeStatus() {
 		if(igniteInstance!=null) {
 			
 			IgniteConfiguration ic = igniteInstance.configuration();
@@ -368,7 +368,7 @@ public class IgniteNode {
 				
 				if(cn.isClient()) {
 					clients++; 
-				}else { 
+				}else {
 					serverNodes.add(cn);
 					servers++;
 					ClusterMetrics cmmmm = cn.metrics();
@@ -446,23 +446,45 @@ public class IgniteNode {
 			
 			
 			
-			Collection<BaselineNode> onlineNodes = igniteInstance.cluster().currentBaselineTopology();
-			if(onlineNodes==null)onlineNodes = new ArrayList<>();
+			str.append("\n");
+			
+			
+			Collection<BaselineNode> baselineNodes = igniteInstance.cluster().currentBaselineTopology();
+			if(baselineNodes==null)baselineNodes = new ArrayList<>();
 			StringBuilder onlineNodesStr = new StringBuilder();
+			
+			Collection<ClusterNode> runningServers = igniteInstance.cluster().forServers().nodes();
+			StringBuilder runningServersStr = new StringBuilder();
 			
 			Collection<BaselineNode> offlineNodes = new ArrayList<>();
 			StringBuilder offlineNodesStr = new StringBuilder();
 			
+			Collection<BaselineNode> offlineinBaselineNodes = new ArrayList<>();
+			StringBuilder offlineinBaselineNodesStr = new StringBuilder();
 			
-			for(BaselineNode bs : onlineNodes) 
-				onlineNodesStr.append("("+bs.consistentId()+")");	
+			for(BaselineNode bs : baselineNodes) {
+				onlineNodesStr.append("("+bs.consistentId()+")");
+				
+				boolean finded = false;
+				
+				for(ClusterNode cn : runningServers) 
+						if(bs.consistentId().equals(cn.consistentId())) {
+							finded = true;
+							break;
+						}
+				
+				if(!finded) {
+					offlineinBaselineNodes.add(bs);
+					offlineinBaselineNodesStr.append("("+bs.consistentId()+")");
+				}
+				
+			}
 			
 			for(ClusterNode scn : serverNodes) {
 				
 				boolean finded = false;
 				
-				
-				for(BaselineNode bs : onlineNodes) 
+				for(BaselineNode bs : baselineNodes) 
 						if(bs.consistentId().equals(scn.consistentId())) {
 							finded = true;
 							break;
@@ -475,11 +497,19 @@ public class IgniteNode {
 			}
 			
 			
-			str.append("In topology server nodes---: "+onlineNodes.size()+"["+onlineNodesStr.toString()+"]\n");
-			str.append("Out topology server nodes--: "+offlineNodes.size()+"["+offlineNodesStr.toString()+"]\n");
+			for(ClusterNode scn : runningServers)
+				runningServersStr.append("("+scn.consistentId()+")");
 			
 			
+			String msgOffInBas = "";
+			if(offlineinBaselineNodes.size()>0)
+				msgOffInBas="GRAVE!!! TRY UP THE NODES";
 			
+			
+			str.append("All running online servers-: "+runningServers.size()+"["+runningServersStr.toString()+"]\n");
+			str.append("Baseline server nodes------: "+baselineNodes.size()+"["+onlineNodesStr.toString()+"]\n");
+			str.append("Online servers OUT baseline: "+offlineNodes.size()+"["+offlineNodesStr.toString()+"]\n");
+			str.append("Offline servers IN baseline: "+offlineinBaselineNodes.size()+"["+offlineinBaselineNodesStr.toString()+"] "+msgOffInBas+"\n");
 			
 			str.append("\n");
 			
