@@ -4,15 +4,15 @@ import static org.apache.ignite.internal.IgniteComponentType.SPRING;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileReader;
-import java.io.IOException;
 import java.io.InputStream;
 import java.lang.management.ManagementFactory;
 import java.net.MalformedURLException;
-import java.net.URI;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -26,26 +26,19 @@ import javax.management.ObjectName;
 import javax.management.ReflectionException;
 
 import org.apache.ignite.Ignite;
+import org.apache.ignite.IgniteCheckedException;
+import org.apache.ignite.IgniteCluster;
+import org.apache.ignite.IgniteException;
 import org.apache.ignite.Ignition;
-import org.apache.ignite.client.IgniteClient;
+import org.apache.ignite.cluster.BaselineNode;
 import org.apache.ignite.cluster.ClusterMetrics;
 import org.apache.ignite.cluster.ClusterNode;
 import org.apache.ignite.cluster.ClusterState;
-import org.apache.ignite.configuration.ClientConfiguration;
-import org.apache.ignite.configuration.DataRegionConfiguration;
-import org.apache.ignite.configuration.DataStorageConfiguration;
 import org.apache.ignite.configuration.IgniteConfiguration;
-import org.apache.ignite.internal.ClusterMetricsMXBeanImpl;
-import org.apache.ignite.internal.IgniteEx;
-import org.apache.ignite.internal.IgniteKernal;
-import org.apache.ignite.internal.IgnitionMXBeanAdapter;
-import org.apache.ignite.internal.processors.metric.GridMetricManager;
+import org.apache.ignite.internal.processors.cluster.baseline.autoadjust.BaselineAutoAdjustStatus;
 import org.apache.ignite.internal.util.spring.IgniteSpringHelper;
 import org.apache.ignite.lang.IgniteBiTuple;
 import org.apache.ignite.lang.IgniteProductVersion;
-import org.apache.ignite.spi.IgniteSpi;
-import org.apache.ignite.spi.IgniteSpiContext;
-import org.apache.ignite.spi.IgniteSpiManagementMBean;
 import org.apache.ignite.spi.communication.tcp.TcpCommunicationSpi;
 import org.apache.ignite.spi.discovery.DiscoverySpi;
 import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
@@ -73,6 +66,11 @@ public class IgniteNode {
 	private Integer tcpCommunicationLocalPort = null;
 	private Integer tcpCommunicationLocalPortRange = null;
 	
+	private Boolean activeClusterAfterNodeStart = null;
+	private Boolean baselineAutoAdjustEnabled = null;
+	private Long baselineAutoAdjustTimeout = null;
+	private String clusterTag = null;
+	
 	public IgniteNode(MainThread mainThread) {
 		this.mainThread = mainThread;
 		
@@ -89,13 +87,64 @@ public class IgniteNode {
 		//Starting
 		igniteInstance = Ignition.start(conf);
 		
-		Thread.sleep(1000);
 		
-		if(!igniteInstance.cluster().state().active()) {
-			igniteInstance.cluster().state(ClusterState.ACTIVE);
-			System.out.println("Cluster state INACTIVE, set to ACTIVE");
+		if(activeClusterAfterNodeStart!=null || baselineAutoAdjustEnabled!=null || baselineAutoAdjustTimeout!=null) {
+		
+			Thread.sleep(1000);
+			
+			if(activeClusterAfterNodeStart!=null)
+				if(!activeClusterAfterNodeStart.equals(igniteInstance.cluster().state().active())){
+						Thread.sleep(5000);
+						igniteInstance.cluster().state(activeClusterAfterNodeStart?ClusterState.ACTIVE:ClusterState.INACTIVE);
+						System.out.println("Cluster state from "+(activeClusterAfterNodeStart?ClusterState.INACTIVE:ClusterState.ACTIVE) + " to " + (activeClusterAfterNodeStart?ClusterState.ACTIVE:ClusterState.INACTIVE));
+					}
+			
+			if(baselineAutoAdjustEnabled!=null)		
+				if(!baselineAutoAdjustEnabled.equals(igniteInstance.cluster().isBaselineAutoAdjustEnabled())){
+					Thread.sleep(3000);
+					igniteInstance.cluster().baselineAutoAdjustEnabled(baselineAutoAdjustEnabled);
+					System.out.println("Cluster baselineAutoAdjustEnabled from "+(!baselineAutoAdjustEnabled)+" to "+baselineAutoAdjustEnabled);
+				}
+			
+			if(baselineAutoAdjustTimeout!=null)
+				if(!baselineAutoAdjustTimeout.equals(igniteInstance.cluster().baselineAutoAdjustTimeout())) {
+					long old = igniteInstance.cluster().baselineAutoAdjustTimeout();
+					Thread.sleep(3000);
+					igniteInstance.cluster().baselineAutoAdjustTimeout(baselineAutoAdjustTimeout);
+					System.out.println("Cluster baselineAutoAdjustTimeout from "+old+" to "+baselineAutoAdjustTimeout+" mills");
+				}
 		}
 		
+		checkIgniteTag();
+		
+	}
+	
+	private void checkIgniteTag() {
+		if(igniteInstance.cluster().state().active()) {
+			
+			if(clusterTag!=null)
+				if(!clusterTag.isEmpty()) {
+					
+					
+					String corrected = clusterTag;
+					if(clusterTag.length()>IgniteCluster.MAX_TAG_LENGTH) 
+						corrected = clusterTag.substring(0, IgniteCluster.MAX_TAG_LENGTH-1);
+					
+					
+					if(!corrected.equals(igniteInstance.cluster().tag())){
+						String old = igniteInstance.cluster().tag();
+						
+						try {
+							
+							igniteInstance.cluster().tag(corrected);
+						
+							System.out.println("Cluster tag from '"+old+"' to '"+corrected+"'");
+							
+						} catch (IgniteCheckedException e) {}
+					}
+				}
+			
+		}
 	}
 	
 	private void loadConfiguration() throws Exception {
@@ -169,6 +218,19 @@ public class IgniteNode {
 				
 				temp = ignite_node_properties.getProperty("tcpCommunicationLocalPortRange");
 				if(temp!=null)if(!temp.isEmpty())tcpCommunicationLocalPortRange = Integer.parseInt(temp);
+				
+				temp = ignite_node_properties.getProperty("activeClusterAfterNodeStart");
+				if(temp!=null)if(!temp.isEmpty())activeClusterAfterNodeStart = Boolean.parseBoolean(temp);
+				
+				temp = ignite_node_properties.getProperty("baselineAutoAdjustEnabled");
+				if(temp!=null)if(!temp.isEmpty())baselineAutoAdjustEnabled = Boolean.parseBoolean(temp);
+				
+				temp = ignite_node_properties.getProperty("baselineAutoAdjustTimeout");
+				if(temp!=null)if(!temp.isEmpty())baselineAutoAdjustTimeout = Long.parseLong(temp);
+
+				temp = ignite_node_properties.getProperty("clusterTag");
+				if(temp!=null)if(!temp.isEmpty())clusterTag = temp;
+				
 			}
 		}catch(Exception e) {
 			System.err.println("ERROR reading configuration file");
@@ -255,6 +317,35 @@ public class IgniteNode {
 			e.printStackTrace();
 		}
 	}
+	
+	public String switchClusterState() {
+		String outMessage = "";
+		try {
+			if(igniteInstance!=null) {
+				if(igniteInstance.cluster().state()==ClusterState.ACTIVE || igniteInstance.cluster().state()==ClusterState.ACTIVE_READ_ONLY) {
+					outMessage = "cluster state from "+igniteInstance.cluster().state().toString()+" to "+ClusterState.INACTIVE.toString()+"\n";
+					igniteInstance.cluster().state(ClusterState.INACTIVE);
+					System.out.println(outMessage);
+					Thread.sleep(3000);
+					outMessage += "SUCCESS, new cluster state "+igniteInstance.cluster().state();
+				} else {
+					outMessage = "cluster state from "+igniteInstance.cluster().state().toString()+" to "+ClusterState.ACTIVE.toString()+"\n";
+					igniteInstance.cluster().state(ClusterState.ACTIVE);
+					System.out.println(outMessage);
+					Thread.sleep(3000);
+					outMessage += "SUCCESS, new cluster state "+igniteInstance.cluster().state();
+					checkIgniteTag();
+				}
+			}
+		}catch(IgniteException e) {
+			e.printStackTrace();
+			outMessage += e.getClass().getCanonicalName()+" - "+e.getMessage()+"\n";
+		}catch(Exception e) {
+			e.printStackTrace();
+			outMessage += e.getClass().getCanonicalName()+" - "+e.getMessage()+"\n";
+		}
+		return outMessage;
+	}
 
 	public String getNodeStatus() {
 		if(igniteInstance!=null) {
@@ -264,20 +355,28 @@ public class IgniteNode {
 			DiscoverySpi dspi = ic.getDiscoverySpi();
 			IgniteProductVersion s = igniteInstance.version();
 			
+			//Refer to mac address, add only the same processors of server instances
+			Map<String,Integer> macs_processors = new HashMap<>(); 
+			
+			Collection<ClusterNode> serverNodes = new ArrayList<>();
+			
 			int servers = 0;
 			int clients = 0;
 			long serversHeapMemoryMaximum = 0;
 			long serversHeapMemoryUsed = 0;
 			for(ClusterNode cn : igniteInstance.cluster().nodes()) {
+				
 				if(cn.isClient()) {
 					clients++; 
 				}else { 
+					serverNodes.add(cn);
 					servers++;
 					ClusterMetrics cmmmm = cn.metrics();
 					serversHeapMemoryMaximum += cmmmm.getHeapMemoryMaximum();
 					serversHeapMemoryUsed += cmmmm.getHeapMemoryUsed();
+					macs_processors.put(cn.attribute("org.apache.ignite.macs"), cmmmm.getTotalCpus());
 				}
-				cn.metrics();
+				
 			}
 			
 			
@@ -288,9 +387,9 @@ public class IgniteNode {
 			
 			
 			
-			str.append("Consistent ID---: "+ic.getConsistentId()+"\n");
-			str.append("UUID------------: "+igniteInstance.cluster().localNode().id()+"\n");
-			str.append("Node version----: "+igniteInstance.version()+"\n");
+			str.append("Node consistent ID---------: "+ic.getConsistentId()+"\n");
+			str.append("Node UUID------------------: "+igniteInstance.cluster().localNode().id()+"\n");
+			str.append("Node version---------------: "+igniteInstance.version()+"\n");
 			
 			
 			
@@ -305,95 +404,101 @@ public class IgniteNode {
 			long seconds = TimeUnit.MILLISECONDS.toSeconds(executionTime)-TimeUnit.MINUTES.toSeconds(minutes);			
 			String upTime = days+".days "+hour+".hours "+minutes+".mins "+seconds+".secs";
 			
-			str.append("Grid start time-: "+new Date(cm.getNodeStartTime())+"\n");
-			str.append("Grid uptime-----: "+upTime+"\n");
-			str.append("Grid state------: "+(igniteInstance.cluster().state().active() ? "ACTIVE" : "NOT ACTIVE")+"\n");
+			str.append("Cluster ID-----------------: "+igniteInstance.cluster().id()+"\n");
+			str.append("Cluster tag----------------: "+igniteInstance.cluster().tag()+"\n");
+			str.append("Cluster start time---------: "+new Date(cm.getNodeStartTime())+"\n");
+			str.append("Cluster uptime-------------: "+upTime+"\n");
+			str.append("Cluster state--------------: "+(igniteInstance.cluster().state().active() ? "ACTIVE" : "NOT ACTIVE")+"\n");
+			
+			BaselineAutoAdjustStatus bas = igniteInstance.cluster().baselineAutoAdjustStatus();
+			str.append("BaselineAutoAdjustStatus---: "+bas.getTaskState()+"\n");
+			str.append("BaselineAutoAdjustEnabled--: "+igniteInstance.cluster().isBaselineAutoAdjustEnabled()+"\n");
+			
 			
 			
 			str.append("\n");
 			
 			
-			/*
-			long gb = ((cm.getHeapMemoryUsed()/1024)/1024)/1024;
-			long mb = ((cm.getHeapMemoryUsed()/1024)/1024)-(gb*1024);
-			long kb = (cm.getHeapMemoryUsed()/1024)-(mb*1024);
-			String usedHeap = gb<=0 ? mb+"."+kb+"MB" : gb+"."+mb+"GB";
-			*/
-			/*
-			long tgb = (((cm.getHeapMemoryTotal()/1024)/1024)/1024);
-			long tmb = ((cm.getHeapMemoryTotal()/1024)/1024)-(tgb*1024);
-			String totalHeap = tgb+"."+tmb+"GB";
-			*/
-			
 			long gb = ((serversHeapMemoryUsed/1024)/1024)/1024;
 			long mb = ((serversHeapMemoryUsed/1024)/1024)-(gb*1024);
-			long kb = (serversHeapMemoryUsed/1024)-(mb*1024);
-			String usedHeap = gb<=0 ? mb+"."+kb+"MB" : gb+"."+mb+"GB";
+			String usedHeap = gb+"."+mb+"GB";
 			
 			long tgb = (((serversHeapMemoryMaximum/1024)/1024)/1024);
 			long tmb = ((serversHeapMemoryMaximum/1024)/1024)-(tgb*1024);
 			String totalHeap = tgb+"."+tmb+"GB";
 			
-			/*
-			long gb1 = ((cm.getNonHeapMemoryUsed() /1024)/1024)/1024;
-			long mb1 = ((cm.getNonHeapMemoryUsed()/1024)/1024)-(gb1*1024);
-			long kb1 = (cm.getNonHeapMemoryUsed()/1024)-(mb1*1024);
-			String nonUsedHeap = gb1<=0 ? mb1+"."+kb1+"MB" : gb1+"."+mb1+"GB";
+			long freeRamBytes = serversHeapMemoryMaximum-serversHeapMemoryUsed;
+			long freeRamGB = ((freeRamBytes/1024)/1024)/1024;
+			long freeRamMB = ((freeRamBytes/1024)/1024)-(freeRamGB*1024);
+			String freeRam = freeRamGB+"."+freeRamMB+"GB";
 			
-			long tgb1 = (((cm.getNonHeapMemoryTotal()/1024)/1024)/1024);
-			long tmb1 = ((cm.getNonHeapMemoryTotal()/1024)/1024)-(tgb1*1024);
-			String nonTotalHeap = tgb1+"."+tmb1+"GB";
-			*/
-			
-			//long gbMaximum = ((cm.getHeapMemoryMaximum ()/1024)/1024)/1024;
-			
-			/**
-			long mbhmc = (cm.getHeapMemoryCommitted()/1024)/1024;
-			long mbhmi = (cm.getHeapMemoryInitialized()/1024)/1024;
-			long mbhmm = (cm.getHeapMemoryMaximum()/1024)/1024;
-			long mbhmt = (cm.getHeapMemoryTotal()/1024)/1024;
-			long mbhmu = (cm.getHeapMemoryUsed()/1024)/1024;
-			
-			long mbnhmc = (cm.getNonHeapMemoryCommitted()/1024)/1024;
-			long mbnhmi = (cm.getNonHeapMemoryInitialized()/1024)/1024;
-			long mbnhmm = (cm.getNonHeapMemoryMaximum()/1024)/1024;
-			long mbnhmt = (cm.getNonHeapMemoryTotal()/1024)/1024;
-			long mbnhmu = (cm.getNonHeapMemoryUsed()/1024)/1024;
-			
-			str.append("getHeapMemoryCommitted--: "+mbhmc+"\n");
-			str.append("getHeapMemoryInitialized: "+mbhmi+"\n");
-			str.append("getHeapMemoryMaximum----: "+mbhmm+"\n");
-			str.append("getHeapMemoryTotal------: "+mbhmt+"\n");
-			str.append("getHeapMemoryUsed-------: "+mbhmu+"\n");
-			
-			str.append("getNonHeapMemoryCommitted--: "+mbnhmc+"\n");
-			str.append("getNonHeapMemoryInitialized: "+mbnhmi+"\n");
-			str.append("getNonHeapMemoryMaximum----: "+mbnhmm+"\n");
-			str.append("getNonHeapMemoryTotal------: "+mbnhmt+"\n");
-			str.append("getNonHeapMemoryUsed-------: "+mbnhmu+"\n");
-			*/
+			int totCpus = macs_processors.values().stream().mapToInt(Integer::intValue).sum();
 						
-			str.append("Grid CPUs-------: "+cm.getTotalCpus()+"\n");
-			str.append("Grid Max RAM----: "+totalHeap+"\n");
-			str.append("Grid used RAM---: "+usedHeap+"\n");
-			str.append("Servers node----: "+servers+"\n");
-			str.append("Clients node----: "+clients+"\n");
+			str.append("Cluster CPUs---------------: "+totCpus+"\n");
+			str.append("Cluster Tot.RAM------------: "+totalHeap+"\n");
+			str.append("Cluster used RAM-----------: "+usedHeap+"\n");
+			str.append("Cluster free RAM-----------: "+freeRam+"\n");
+			str.append("Cluster servers------------: "+servers+"\n");
+			str.append("Cluster clients------------: "+clients+"\n");
+			
+			//org.apache.ignite.data.regions.offheap.size
+			//org.apache.ignite.offheap.size
+			
+			
+			
+			Collection<BaselineNode> onlineNodes = igniteInstance.cluster().currentBaselineTopology();
+			if(onlineNodes==null)onlineNodes = new ArrayList<>();
+			StringBuilder onlineNodesStr = new StringBuilder();
+			
+			Collection<BaselineNode> offlineNodes = new ArrayList<>();
+			StringBuilder offlineNodesStr = new StringBuilder();
+			
+			
+			for(BaselineNode bs : onlineNodes) 
+				onlineNodesStr.append("("+bs.consistentId()+")");	
+			
+			for(ClusterNode scn : serverNodes) {
+				
+				boolean finded = false;
+				
+				
+				for(BaselineNode bs : onlineNodes) 
+						if(bs.consistentId().equals(scn.consistentId())) {
+							finded = true;
+							break;
+						}
+				
+				if(!finded) {
+					offlineNodes.add(scn);
+					offlineNodesStr.append("("+scn.consistentId()+")");
+				}
+			}
+			
+			
+			str.append("In topology server nodes---: "+onlineNodes.size()+"["+onlineNodesStr.toString()+"]\n");
+			str.append("Out topology server nodes--: "+offlineNodes.size()+"["+offlineNodesStr.toString()+"]\n");
+			
 			
 			
 			
 			str.append("\n");
 			
 			
-			String cacheNames = "";
-			if(!igniteInstance.cacheNames().isEmpty()) {
-				for(String cacheName : igniteInstance.cacheNames())
-					cacheNames += cacheName+", ";
-				cacheNames = cacheNames.substring(0, cacheNames.length()-3);
+			
+			
+			if(igniteInstance.cluster().state()!=ClusterState.INACTIVE) {
+			
+				String cacheNames = "";
+				if(!igniteInstance.cacheNames().isEmpty()) {
+					for(String cacheName : igniteInstance.cacheNames())
+						cacheNames += cacheName+", ";
+					cacheNames = cacheNames.substring(0, cacheNames.length()-3);
+				}
+				
+				
+				
+				str.append("Cache names------------: "+cacheNames+"\n");
 			}
-			
-			
-			
-			str.append("Cache names-----: "+cacheNames+"\n");
 			
 			/*
 			try {
