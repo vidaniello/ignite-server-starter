@@ -11,6 +11,8 @@ import java.util.Date;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.apache.ignite.cluster.ClusterState;
+
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpServer;
@@ -143,12 +145,26 @@ public class MainThread implements Runnable{
 				  "'CTRL+C' from command line to send SIGTERM" + "\n" 
 				+ "'kill pid " + pid + "' from unix command line to send SIGTERM" + "\n" + "\n"
 				+ "from the 'http://localhost:"+inetSocketPort+"/[command]'"+ " or command line:" + "\n" + "\n"
-				+ "status  : get status information" + "\n"
-				+ "stop    : stop instance, also stop bootloader and webserver" + "\n"
-				+ "stopnode: stop only ignite node, call 'restart' command for starting after 'stopnode' command " + "\n"
-				+ "restart : restart te instance" + "\n"
-				+ "help    : this help" + "\n"
+				+ "status             : get status information" + "\n"
+				+ "stop               : stop instance, also stop bootloader and webserver" + "\n"
+				+ "stopnode           : stop only ignite node, call 'restart' command for starting after 'stopnode' command " + "\n"
+				+ "restart            : restart te instance" + "\n"
+				+ "help               : this help" + "\n"
+				+ "switchclusterstate : switch cluster state: From ACTIVE to INACTIVE and viceversa" + "\n"
 				);
+	}
+	
+	private void onSwitchclusterstate(RoutingContext ctx) {
+		String outMessage = "";
+		
+		if(igniteNode!=null)
+			outMessage = igniteNode.switchClusterState();
+		
+		if(outMessage.isEmpty())
+			outMessage = "Ignite local server node not present!"+"\n";
+			
+		if(ctx!=null) 
+			ctx.response().putHeader("content-type", "text/plain").end(outMessage);
 	}
 	
 	
@@ -188,6 +204,7 @@ public class MainThread implements Runnable{
 		router.get("/stopnode").blockingHandler(this::onStopnode);
 		router.get("/restart").blockingHandler(this::onRestart);
 		router.get("/help").blockingHandler(this::onHelp);
+		router.get("/switchclusterstate").blockingHandler(this::onSwitchclusterstate);
 		router.get()
 		.blockingHandler(ctx->{
 			if(ctx.request().path().equals("/"))
