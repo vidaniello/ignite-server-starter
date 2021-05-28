@@ -151,6 +151,7 @@ public class MainThread implements Runnable{
 				+ "restart            : restart te instance" + "\n"
 				+ "help               : this help" + "\n"
 				+ "switchclusterstate : switch cluster state: From ACTIVE to INACTIVE and viceversa" + "\n"
+				+ "switchfrombaseline : put the node instance in the cluster baseline if out and viceversa" + "\n"
 				);
 	}
 	
@@ -167,13 +168,26 @@ public class MainThread implements Runnable{
 			ctx.response().putHeader("content-type", "text/plain").end(outMessage);
 	}
 	
+	private void onSwitchFromBaselinee(RoutingContext ctx) {
+		String outMessage = "";
+		
+		if(igniteNode!=null)
+			outMessage = igniteNode.switchFromBaseline();
+		
+		if(outMessage.isEmpty())
+			outMessage = "Ignite local server node not present!"+"\n";
+			
+		if(ctx!=null) 
+			ctx.response().putHeader("content-type", "text/plain").end(outMessage);
+	}
+	
 	
 	private void stopIgniteNode() {
 		if(igniteNode!=null) {
 			updateStatus("stopping ignite node...");
 			igniteNode.stopNode();
 			updateStatus("ignite node stopped!");
-			igniteNode=null;
+//igniteNode=null;
 		}
 	}
 	
@@ -199,12 +213,13 @@ public class MainThread implements Runnable{
 		vertx = Vertx.vertx();
 		Router router = Router.router(vertx);
 		
-		router.get("/status").blockingHandler(this::onStatus);
-		router.get("/stop").blockingHandler(this::onStop);
-		router.get("/stopnode").blockingHandler(this::onStopnode);
-		router.get("/restart").blockingHandler(this::onRestart);
-		router.get("/help").blockingHandler(this::onHelp);
-		router.get("/switchclusterstate").blockingHandler(this::onSwitchclusterstate);
+		router.get("/status")				.blockingHandler(this::onStatus);
+		router.get("/stop")					.blockingHandler(this::onStop);
+		router.get("/stopnode")				.blockingHandler(this::onStopnode);
+		router.get("/restart")				.blockingHandler(this::onRestart);
+		router.get("/help")					.blockingHandler(this::onHelp);
+		router.get("/switchclusterstate")	.blockingHandler(this::onSwitchclusterstate);
+		router.get("/switchfrombaseline")	.blockingHandler(this::onSwitchFromBaselinee);
 		router.get()
 		.blockingHandler(ctx->{
 			if(ctx.request().path().equals("/"))

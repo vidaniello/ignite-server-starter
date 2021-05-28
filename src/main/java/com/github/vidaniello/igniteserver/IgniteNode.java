@@ -5,6 +5,7 @@ import static org.apache.ignite.internal.IgniteComponentType.SPRING;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
+import java.io.Serializable;
 import java.lang.management.ManagementFactory;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -35,16 +36,20 @@ import org.apache.ignite.cluster.ClusterMetrics;
 import org.apache.ignite.cluster.ClusterNode;
 import org.apache.ignite.cluster.ClusterState;
 import org.apache.ignite.configuration.IgniteConfiguration;
+import org.apache.ignite.internal.IgnitionMXBeanAdapter;
 import org.apache.ignite.internal.processors.cluster.baseline.autoadjust.BaselineAutoAdjustStatus;
 import org.apache.ignite.internal.util.spring.IgniteSpringHelper;
 import org.apache.ignite.lang.IgniteBiTuple;
 import org.apache.ignite.lang.IgniteProductVersion;
+import org.apache.ignite.lifecycle.LifecycleBean;
+import org.apache.ignite.lifecycle.LifecycleEventType;
+import org.apache.ignite.mxbean.IgnitionMXBean;
 import org.apache.ignite.spi.communication.tcp.TcpCommunicationSpi;
 import org.apache.ignite.spi.discovery.DiscoverySpi;
 import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
 import org.apache.ignite.spi.discovery.tcp.ipfinder.multicast.TcpDiscoveryMulticastIpFinder;
 
-public class IgniteNode {
+public class IgniteNode implements LifecycleBean{
 	
 	private MainThread mainThread;
 	
@@ -251,13 +256,12 @@ public class IgniteNode {
 		}else
 			conf = new IgniteConfiguration();
 		
+		conf.setLifecycleBeans(this);
 		
 		//ConsistentId
 		if(consistentId!=null)
 			conf.setConsistentId(consistentId);
-		
-		
-		
+				
 		
 		//Discovery section
 		if(tcpDiscoveryLocalPortRange!=null || tcpDiscoveryLocalPort!=null || 
@@ -311,13 +315,17 @@ public class IgniteNode {
 				igniteInstance.close();
 			
 			
-			igniteInstance = null;
+//igniteInstance = null;
 			conf = null;
 		}catch(Exception e) {
 			e.printStackTrace();
 		}
 	}
 	
+	/**
+	 * Switch the cluster state, if INACTIVE, it's set to ACTIVE, else, if ACTIVE or ACTIVE_READ_ONLY, it's set to INACTIVE 
+	 * @return
+	 */
 	public synchronized String switchClusterState() {
 		String outMessage = "";
 		try {
@@ -347,6 +355,86 @@ public class IgniteNode {
 		return outMessage;
 	}
 
+	/**
+	 * If this node instance is OUT of the current cluster baseline, it's included, otherwise,
+	 * if it's IN the current baseline, it's dropped out.<br>
+	 * Operation permitted only if cluster is in ACTIVE status<br>
+	 * <a href="https://apacheignite.readme.io/docs/baseline-topology#setting-the-topology-from-code" >Link to the apache ignite documentation</a>
+	 * @return
+	 */
+	public synchronized String switchFromBaseline() {
+		String outMessage = "";
+		
+		try {
+			if(igniteInstance!=null)
+				if(igniteInstance.cluster().state().active()) {
+					
+					Serializable nodeConsistentId = igniteInstance.configuration().getConsistentId();
+					//Check current state of this node					
+					if(isThisNodeInBaselineTopology()) {
+						//Request exit from baseline
+						requestExitFromCurrentBaseline();
+						outMessage = "["+nodeConsistentId+"] is EXIT from current baseline topology, syncronizing in progress..."+"\n";
+					} else {
+						//Request join in baseline
+						requestJoinInCurrentBaseline();
+						outMessage = "["+nodeConsistentId+"] is JOINED in current baseline topology, syncronizing in progress..."+"\n";
+					}
+				
+					
+				}else
+					outMessage = "WARN! Cluster must be in ACTIVE state for changing the baseline topology"+"\n";
+			
+			}catch(IgniteException e) {
+			e.printStackTrace();
+			outMessage += e.getClass().getCanonicalName()+" - "+e.getMessage()+"\n";
+		}catch(Exception e) {
+			e.printStackTrace();
+			outMessage += e.getClass().getCanonicalName()+" - "+e.getMessage()+"\n";
+		}
+		return outMessage;
+	}
+	
+	private void requestExitFromCurrentBaseline() {
+		Serializable nodeConsistentId = igniteInstance.configuration().getConsistentId();
+		//Serializable nodeConsistentId = "Node_2";
+		//Collection<BaselineNode> currentBaseline = igniteInstance.cluster().currentBaselineTopology();
+		//Collection<BaselineNode> newBaseline = new ArrayList<>();
+		
+		//for(BaselineNode bn : currentBaseline)
+			//if(!bn.consistentId().equals(nodeConsistentId))
+				//newBaseline.add(bn);
+		//igniteInstance.cluster().setBaselineTopology(newBaseline);
+		
+		igniteInstance.compute(igniteInstance.cluster().forRemotes()).callAsync(new RemoveNodeFromBaselineCallable(nodeConsistentId));
+		stopNode();
+		//TODO update MainThread status
+		
+		
+	}
+	
+	private void requestJoinInCurrentBaseline() {
+		//Serializable nodeConsistentId = igniteInstance.configuration().getConsistentId();
+		
+		Collection<BaselineNode> newBaseline = igniteInstance.cluster().currentBaselineTopology();
+		BaselineNode thisNode = igniteInstance.cluster().localNode();
+		newBaseline.add(thisNode);
+		
+		igniteInstance.cluster().setBaselineTopology(newBaseline);
+	}
+	
+	
+	private boolean isThisNodeInBaselineTopology() {
+		Collection<BaselineNode> baselineNodes = igniteInstance.cluster().currentBaselineTopology();
+		Serializable nodeConsistentId = igniteInstance.configuration().getConsistentId();
+		if(baselineNodes!=null)
+			for(BaselineNode bn : baselineNodes) 
+				if(bn.consistentId().equals(nodeConsistentId))
+					return true;
+		
+		return false;
+	}
+	
 	public synchronized String getNodeStatus() {
 		if(igniteInstance!=null) {
 			
@@ -390,7 +478,7 @@ public class IgniteNode {
 			str.append("Node consistent ID---------: "+ic.getConsistentId()+"\n");
 			str.append("Node UUID------------------: "+igniteInstance.cluster().localNode().id()+"\n");
 			str.append("Node version---------------: "+igniteInstance.version()+"\n");
-			
+			str.append("Node baseline--------------: "+(isThisNodeInBaselineTopology()?"IN":"OUT")+"\n");
 			
 			
 			str.append("\n");
@@ -411,12 +499,13 @@ public class IgniteNode {
 			str.append("Cluster state--------------: "+(igniteInstance.cluster().state().active() ? "ACTIVE" : "NOT ACTIVE")+"\n");
 			
 			BaselineAutoAdjustStatus bas = igniteInstance.cluster().baselineAutoAdjustStatus();
-			str.append("BaselineAutoAdjustStatus---: "+bas.getTaskState()+"\n");
 			str.append("BaselineAutoAdjustEnabled--: "+igniteInstance.cluster().isBaselineAutoAdjustEnabled()+"\n");
+			str.append("BaselineAutoAdjustStatus---: "+bas.getTaskState()+"\n");
 			
 			
 			
 			str.append("\n");
+			
 			
 			
 			long gb = ((serversHeapMemoryUsed/1024)/1024)/1024;
@@ -438,10 +527,10 @@ public class IgniteNode {
 			str.append("Cluster Tot.RAM------------: "+totalHeap+"\n");
 			str.append("Cluster used RAM-----------: "+usedHeap+"\n");
 			str.append("Cluster free RAM-----------: "+freeRam+"\n");
-			str.append("Cluster servers------------: "+servers+"\n");
-			str.append("Cluster clients------------: "+clients+"\n");
+			//str.append("Cluster servers------------: "+servers+"\n");
+			//str.append("Cluster clients------------: "+clients+"\n");
 			
-			//org.apache.ignite.data.regions.offheap.size
+			//org.apache.ignite.data.regions.offheap.sizein progress
 			//org.apache.ignite.offheap.size
 			
 			
@@ -503,13 +592,14 @@ public class IgniteNode {
 			
 			String msgOffInBas = "";
 			if(offlineinBaselineNodes.size()>0)
-				msgOffInBas="GRAVE!!! TRY UP THE NODES";
+				msgOffInBas="GRAVE!!! POWER ON THE NODES OR REMOVE ITS FROM THE BASELINE.";
 			
 			
-			str.append("All running online servers-: "+runningServers.size()+"["+runningServersStr.toString()+"]\n");
+			str.append("Cluster servers------------: "+runningServers.size()+"["+runningServersStr.toString()+"]\n");
 			str.append("Baseline server nodes------: "+baselineNodes.size()+"["+onlineNodesStr.toString()+"]\n");
-			str.append("Online servers OUT baseline: "+offlineNodes.size()+"["+offlineNodesStr.toString()+"]\n");
 			str.append("Offline servers IN baseline: "+offlineinBaselineNodes.size()+"["+offlineinBaselineNodesStr.toString()+"] "+msgOffInBas+"\n");
+			str.append("Unused servers OUT baseline: "+offlineNodes.size()+"["+offlineNodesStr.toString()+"]\n");
+			str.append("Cluster clients------------: "+clients+"\n");
 			
 			str.append("\n");
 			
@@ -527,7 +617,7 @@ public class IgniteNode {
 				
 				
 				
-				str.append("Cache names------------: "+cacheNames+"\n");
+				str.append("Cache names----------------: "+cacheNames+"\n");
 			}
 			
 			/*
@@ -548,6 +638,7 @@ public class IgniteNode {
 	 */
 	private void esploraMbean() throws IntrospectionException, InstanceNotFoundException, ReflectionException {
 		MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+		
 		//QueryExp query = Query.anySubString(Query.attr("protocol"), Query.value("Http11"));
 		Set<ObjectName> objs = mbs.queryNames(null, null);
 		
@@ -567,6 +658,15 @@ public class IgniteNode {
 				}
 			}
 		}
+	}
+
+	@Override
+	public synchronized void onLifecycleEvent(LifecycleEventType evt) throws IgniteException {
+		//IgniteConfiguration conf_ = igniteInstance.configuration();
+		if(igniteInstance!=null)
+			System.out.println("["+igniteInstance.configuration().getConsistentId()+"] LifecycleEventType: "+evt.toString());
+		else
+			System.out.println("["+consistentId+"] LifecycleEventType: "+evt.toString());
 	}
 	
 }
