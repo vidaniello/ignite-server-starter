@@ -17,14 +17,18 @@ set "IGNITE_NODE_PROP_FILE=ignite_node.properties"
 
 set "_HTTP_BASE=http://localhost:%BOOTLOADER_HTTP_PORT%/"
 if ""%1"" == ""start"" goto doStart
-if ""%1"" == ""stop"" goto doStop
-if ""%1"" == ""stopnode"" goto doStopnode
-if ""%1"" == ""restart"" goto doRestart
-if ""%1"" == ""status"" goto doStatus
-if ""%1"" == ""help"" goto doHelp
-if ""%1"" == ""switchclusterstate"" goto doSwitchclusterstate
-if ""%1"" == ""?"" goto doHelp
-goto doHelp
+curl "%_HTTP_BASE%%1"
+goto end
+
+rem if ""%1"" == ""stop"" goto doStop
+rem if ""%1"" == ""stopnode"" goto doStopnode
+rem if ""%1"" == ""restart"" goto doRestart
+rem if ""%1"" == ""status"" goto doStatus
+rem if ""%1"" == ""help"" goto doHelp
+rem if ""%1"" == ""switchclusterstate"" goto doSwitchclusterstate
+rem if ""%1"" == ""switchfrombaseline"" goto doSwitchfrombaseline
+rem if ""%1"" == ""?"" goto doHelp
+rem goto doHelp
 
 
 :doStart
@@ -36,30 +40,33 @@ timeout /t 1
 goto end
 
 
-:doStop
-curl "%_HTTP_BASE%stop"
-goto end
+rem :doStop
+rem curl "%_HTTP_BASE%stop"
+rem goto end
 
-:doStopnode
-curl "%_HTTP_BASE%stopnode"
-goto end
+rem :doStopnode
+rem curl "%_HTTP_BASE%stopnode"
+rem goto end
 
+rem :doRestart
+rem curl "%_HTTP_BASE%restart"
+rem goto end
 
-:doRestart
-curl "%_HTTP_BASE%restart"
-goto end
+rem :doStatus
+rem curl "%_HTTP_BASE%status"
+rem goto end
 
-:doStatus
-curl "%_HTTP_BASE%status"
-goto end
+rem :doHelp
+rem curl "%_HTTP_BASE%help"
+rem goto end
 
-:doHelp
-curl "%_HTTP_BASE%help"
-goto end
+rem :doSwitchclusterstate
+rem curl "%_HTTP_BASE%switchclusterstate"
+rem goto end
 
-:doSwitchclusterstate
-curl "%_HTTP_BASE%switchclusterstate"
-goto end
+rem :doSwitchfrombaseline
+rem curl "%_HTTP_BASE%switchfrombaseline"
+rem goto end
 
 
 :end

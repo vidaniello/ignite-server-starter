@@ -28,22 +28,28 @@ case $1 in
 		export "_COMMAND_LINE_ARG=-Xmx$MAX_MEMORY -DIGNITE_PERFORMANCE_SUGGESTIONS_DISABLED=true -XX:+UseG1GC -Xms512m -XX:+DisableExplicitGC -Dfile.encoding=UTF-8 -DIGNITE_NODE_PROP_FILE=$IGNITE_NODE_PROP_FILE"
 		$_JAVA_BIN_EXEC $_COMMAND_LINE_ARG -jar ${enterPoint}.jar $BOOTLOADER_HTTP_PORT
 		;;
-	stop)
-		curl "$_HTTP_BASE""stop"
+	*)
+		curl "$_HTTP_BASE$1"
 		;;
-	stopnode)
-		curl "$_HTTP_BASE""stopnode"
-		;;
-	restart)
-		curl "$_HTTP_BASE""restart"
-		;;
-	status)
-		curl "$_HTTP_BASE""status"
-		;;
-	switchclusterstate)
-		curl "$_HTTP_BASE""switchclusterstate"
-		;;
-	help|?|*)
-		curl "$_HTTP_BASE""help"
-		;;
+#	stop)
+#		curl "$_HTTP_BASE""stop"
+#		;;
+#	stopnode)
+#		curl "$_HTTP_BASE""stopnode"
+#		;;
+#	restart)
+#		curl "$_HTTP_BASE""restart"
+#		;;
+#	status)
+#		curl "$_HTTP_BASE""status"
+#		;;
+#	switchclusterstate)
+#		curl "$_HTTP_BASE""switchclusterstate"
+#		;;
+#	switchfrombaseline)
+#		curl "$_HTTP_BASE""switchfrombaseline"
+#		;;
+#	help|?|*)
+#		curl "$_HTTP_BASE""help"
+#		;;
 esac
