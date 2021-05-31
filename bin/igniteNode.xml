@@ -8,6 +8,12 @@
         
 	<bean class="org.apache.ignite.configuration.IgniteConfiguration">
 	
+	    <!-- Enable peer class loading. -->
+    	<property name="peerClassLoadingEnabled" value="true"/>
+    	<!-- Set deployment mode. -->
+    	<property name="deploymentMode" value="CONTINUOUS"/>
+	
+	
 		<property name="dataStorageConfiguration">
 		
 			<bean class="org.apache.ignite.configuration.DataStorageConfiguration">
