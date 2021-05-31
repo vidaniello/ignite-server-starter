@@ -602,7 +602,7 @@ public class IgniteNode implements LifecycleBean{
 				if(!igniteInstance.cacheNames().isEmpty()) {
 					for(String cacheName : igniteInstance.cacheNames())
 						cacheNames += cacheName+", ";
-					cacheNames = cacheNames.substring(0, cacheNames.length()-3);
+					cacheNames = cacheNames.substring(0, cacheNames.length()-2);
 				}
 				
 				
