@@ -110,7 +110,7 @@ public class MainThread implements Runnable{
 	private void onStop(RoutingContext ctx){
 		stopIgniteNode();
 		if(ctx!=null) 
-			ctx.response().putHeader("content-type", "text/plain").end("Inite node stopped!\nrequest stopping bootloader...\n");
+			ctx.response().putHeader("content-type", "text/plain").end("Ignite node stopped!\nrequest stopping bootloader...\n");
 		
 		cdl.countDown();
 	}
@@ -187,7 +187,7 @@ public class MainThread implements Runnable{
 			updateStatus("stopping ignite node...");
 			igniteNode.stopNode();
 			updateStatus("ignite node stopped!");
-//igniteNode=null;
+			igniteNode=null;
 		}
 	}
 	
@@ -241,7 +241,7 @@ public class MainThread implements Runnable{
 		return bootloader_status_;
 	}
 	
-	private void updateStatus(String status) {
+	void updateStatus(String status) {
 		String newStatus = "[BOOTLOADER "+df.format(new Date())+" - "+status;
 		bootloader_status_ = newStatus;
 		System.out.println(newStatus);

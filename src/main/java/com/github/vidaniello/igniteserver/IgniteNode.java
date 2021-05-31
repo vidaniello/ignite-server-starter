@@ -315,7 +315,7 @@ public class IgniteNode implements LifecycleBean{
 				igniteInstance.close();
 			
 			
-//igniteInstance = null;
+			igniteInstance = null;
 			conf = null;
 		}catch(Exception e) {
 			e.printStackTrace();
@@ -374,11 +374,11 @@ public class IgniteNode implements LifecycleBean{
 					if(isThisNodeInBaselineTopology()) {
 						//Request exit from baseline
 						requestExitFromCurrentBaseline();
-						outMessage = "["+nodeConsistentId+"] is EXIT from current baseline topology, syncronizing in progress..."+"\n";
+						outMessage = "["+nodeConsistentId+"] request EXIT from current baseline topology, syncronizing in progress..."+"\n";
 					} else {
 						//Request join in baseline
 						requestJoinInCurrentBaseline();
-						outMessage = "["+nodeConsistentId+"] is JOINED in current baseline topology, syncronizing in progress..."+"\n";
+						outMessage = "["+nodeConsistentId+"] request JOIN in current baseline topology, syncronizing in progress..."+"\n";
 					}
 				
 					
@@ -392,25 +392,14 @@ public class IgniteNode implements LifecycleBean{
 			e.printStackTrace();
 			outMessage += e.getClass().getCanonicalName()+" - "+e.getMessage()+"\n";
 		}
+		
 		return outMessage;
 	}
 	
 	private void requestExitFromCurrentBaseline() {
 		Serializable nodeConsistentId = igniteInstance.configuration().getConsistentId();
-		//Serializable nodeConsistentId = "Node_2";
-		//Collection<BaselineNode> currentBaseline = igniteInstance.cluster().currentBaselineTopology();
-		//Collection<BaselineNode> newBaseline = new ArrayList<>();
-		
-		//for(BaselineNode bn : currentBaseline)
-			//if(!bn.consistentId().equals(nodeConsistentId))
-				//newBaseline.add(bn);
-		//igniteInstance.cluster().setBaselineTopology(newBaseline);
-		
-		igniteInstance.compute(igniteInstance.cluster().forRemotes()).callAsync(new RemoveNodeFromBaselineCallable(nodeConsistentId));
+		mainThread.updateStatus(igniteInstance.compute(igniteInstance.cluster().forRemotes()).call(new RemoveNodeFromBaselineCallable(nodeConsistentId)));
 		stopNode();
-		//TODO update MainThread status
-		
-		
 	}
 	
 	private void requestJoinInCurrentBaseline() {
@@ -523,7 +512,8 @@ public class IgniteNode implements LifecycleBean{
 			
 			int totCpus = macs_processors.values().stream().mapToInt(Integer::intValue).sum();
 						
-			str.append("Cluster CPUs---------------: "+totCpus+"\n");
+			str.append("------ Online hardware ----- \n");
+			str.append("Cluster total CPUs---------: "+totCpus+"\n");
 			str.append("Cluster Tot.RAM------------: "+totalHeap+"\n");
 			str.append("Cluster used RAM-----------: "+usedHeap+"\n");
 			str.append("Cluster free RAM-----------: "+freeRam+"\n");
@@ -595,7 +585,7 @@ public class IgniteNode implements LifecycleBean{
 				msgOffInBas="GRAVE!!! POWER ON THE NODES OR REMOVE ITS FROM THE BASELINE.";
 			
 			
-			str.append("Cluster servers------------: "+runningServers.size()+"["+runningServersStr.toString()+"]\n");
+			str.append("Cluster power on servers---: "+runningServers.size()+"["+runningServersStr.toString()+"]\n");
 			str.append("Baseline server nodes------: "+baselineNodes.size()+"["+onlineNodesStr.toString()+"]\n");
 			str.append("Offline servers IN baseline: "+offlineinBaselineNodes.size()+"["+offlineinBaselineNodesStr.toString()+"] "+msgOffInBas+"\n");
 			str.append("Unused servers OUT baseline: "+offlineNodes.size()+"["+offlineNodesStr.toString()+"]\n");
