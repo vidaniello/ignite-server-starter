@@ -1,8 +1,11 @@
 package com.github.vidaniello.igniteserver;
 
+import java.util.Date;
+
 import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCache;
 import org.apache.ignite.Ignition;
+import org.apache.ignite.cache.CacheMetrics;
 import org.apache.ignite.client.ClientAddressFinder;
 import org.apache.ignite.client.IgniteClient;
 import org.apache.ignite.configuration.CacheConfiguration;
@@ -36,24 +39,73 @@ public class ClientTest {
 		
 		try(Ignite igniteClient = Ignition.start(conf);) {
 			
-			boolean cluster_state = igniteClient.cluster().state().active();
+			//boolean cluster_state = igniteClient.cluster().state().active();
 			
-			CacheConfiguration<String, String> c1Cfg = new CacheConfiguration<>();
-			c1Cfg.setName("CacheA");
-			//c1Cfg.setDataRegionName("default region");
-			IgniteCache<String, String> cache= igniteClient.getOrCreateCache(c1Cfg);
 			
-			String aValue = null;
-			if(cache.containsKey("A")) {
-				aValue = cache.get("A");
-				cache.put("B", this.toString());
-			}else {
-				aValue = "value";
-				cache.put("A", "value");
-			}
+			try {
+				
+				
+				IgniteCache<?, ?> cacheX = igniteClient.cache("CacheX");
+				if(cacheX==null) {
+					//INITIALIZATION
+				}
+				
+				
+			}catch (Exception e) { e.printStackTrace();	}
 			
-			System.out.println("Key "+"A: "+aValue);
-			System.out.println("Key "+"B: "+cache.get("B"));
+			try {
+			
+				CacheConfiguration<String, String> cacheAcfg = new CacheConfiguration<>();
+				cacheAcfg.setName("CacheA");
+				
+				IgniteCache<String, String> cacheA = igniteClient.getOrCreateCache(cacheAcfg);
+				
+				//CacheMetrics cm = cacheA.metrics();
+				
+				if(!cacheA.containsKey("A")) {
+					System.out.println(cacheAcfg.getName()+" New created");
+					cacheA.put("A", this.toString());
+				}
+				System.out.println("Cache "+cacheAcfg.getName()+", key A: "+cacheA.get("A"));
+				cacheA.put("B", new Date().toString());
+				
+			}catch (Exception e) { e.printStackTrace();	}
+			
+			
+			try {
+				
+				CacheConfiguration<String, String> cacheBcfg = new CacheConfiguration<>();
+				cacheBcfg.setName("CacheB");
+				
+				IgniteCache<String, String> cacheB = igniteClient.getOrCreateCache(cacheBcfg);
+				
+				if(!cacheB.containsKey("A")) {
+					System.out.println(cacheBcfg.getName()+" New created");
+					cacheB.put("A", "A normal string value");
+				}
+				System.out.println("Cache "+cacheBcfg.getName()+", key A: "+cacheB.get("A"));
+				cacheB.put("B", new Date().toString());
+				
+			}catch (Exception e) { e.printStackTrace();	}
+			
+			
+			try {
+				
+				CacheConfiguration<String, String> cachePersistentAcfg = new CacheConfiguration<>();
+				cachePersistentAcfg.setName("CachePersistentA");
+				cachePersistentAcfg.setDataRegionName("persistent_region");
+				
+				IgniteCache<String, String> cachePersistentA = igniteClient.getOrCreateCache(cachePersistentAcfg);
+				
+				if(!cachePersistentA.containsKey("A")) {
+					System.out.println(cachePersistentAcfg.getName()+" New created");
+					cachePersistentA.put("A", "Persistent value in persistent cache in persistent data region");
+				}
+				System.out.println("Cache "+cachePersistentAcfg.getName()+", key A: "+cachePersistentA.get("A"));
+				cachePersistentA.put("B", new Date().toString());
+				
+			}catch (Exception e) { e.printStackTrace();	}
+
 			
 			int i = 0;
 			
