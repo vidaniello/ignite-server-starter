@@ -10,6 +10,7 @@ import java.lang.management.ManagementFactory;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
@@ -27,10 +28,12 @@ import javax.management.ObjectName;
 import javax.management.ReflectionException;
 
 import org.apache.ignite.Ignite;
+import org.apache.ignite.IgniteCache;
 import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.IgniteCluster;
 import org.apache.ignite.IgniteException;
 import org.apache.ignite.Ignition;
+import org.apache.ignite.cache.CachePeekMode;
 import org.apache.ignite.cluster.BaselineNode;
 import org.apache.ignite.cluster.ClusterMetrics;
 import org.apache.ignite.cluster.ClusterNode;
@@ -600,14 +603,21 @@ public class IgniteNode implements LifecycleBean{
 			
 				String cacheNames = "";
 				if(!igniteInstance.cacheNames().isEmpty()) {
-					for(String cacheName : igniteInstance.cacheNames())
-						cacheNames += cacheName+", ";
+					for(String cacheName : igniteInstance.cacheNames()) {
+						IgniteCache<?, ?> icache = igniteInstance.cache(cacheName);
+						cacheNames += cacheName+"("+icache.size(CachePeekMode.PRIMARY)+"), ";
+						//igniteInstance.resetLostPartitions(Arrays.asList(cacheName));
+						Collection<Integer> lpart = icache.lostPartitions();
+						
+						int i = 0;
+						
+					}
 					cacheNames = cacheNames.substring(0, cacheNames.length()-2);
 				}
 				
 				
 				
-				str.append("Cache names----------------: "+cacheNames+"\n");
+				str.append("Cache names (nElements)----: "+cacheNames+"\n");
 			}
 			
 			/*
