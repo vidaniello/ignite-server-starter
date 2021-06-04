@@ -1,9 +1,11 @@
 package com.github.vidaniello.igniteserver;
 
+import java.util.Arrays;
 import java.util.Date;
 
 import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCache;
+import org.apache.ignite.IgniteException;
 import org.apache.ignite.Ignition;
 import org.apache.ignite.cache.CacheMetrics;
 import org.apache.ignite.client.ClientAddressFinder;
@@ -11,6 +13,10 @@ import org.apache.ignite.client.IgniteClient;
 import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.ignite.configuration.ClientConfiguration;
 import org.apache.ignite.configuration.IgniteConfiguration;
+import org.apache.ignite.internal.processors.cache.CacheInvalidStateException;
+import org.apache.ignite.services.Service;
+import org.apache.ignite.services.ServiceConfiguration;
+import org.apache.ignite.services.ServiceContext;
 import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
 import org.apache.ignite.spi.discovery.tcp.ipfinder.multicast.TcpDiscoveryMulticastIpFinder;
 import org.jetbrains.annotations.TestOnly;
@@ -44,8 +50,9 @@ public class ClientTest {
 			
 			try {
 				
-				
+				String cacheName = "CacheX";
 				IgniteCache<?, ?> cacheX = igniteClient.cache("CacheX");
+				
 				if(cacheX==null) {
 					//INITIALIZATION
 				}
@@ -54,55 +61,109 @@ public class ClientTest {
 			}catch (Exception e) { e.printStackTrace();	}
 			
 			try {
-			
-				CacheConfiguration<String, String> cacheAcfg = new CacheConfiguration<>();
-				cacheAcfg.setName("CacheA");
+				String cacheName = "CacheInMemoryA";
+ 				CacheConfiguration<String, String> cachecfg = new CacheConfiguration<>();
+				cachecfg.setName(cacheName);
+				cachecfg.setBackups(1);
 				
-				IgniteCache<String, String> cacheA = igniteClient.getOrCreateCache(cacheAcfg);
+				
+				IgniteCache<String, String> cache = igniteClient.getOrCreateCache(cachecfg);
+				
+				try {
+					cache.containsKey("A");
+				}catch(IgniteException ex) {
+					if(ex.getCause() instanceof CacheInvalidStateException) {
+						int before = cache.lostPartitions().size();
+						igniteClient.resetLostPartitions(Arrays.asList(cacheName));
+						int after = cache.lostPartitions().size();
+						
+						int i = 0;
+					}
+				}
 				
 				//CacheMetrics cm = cacheA.metrics();
 				
-				if(!cacheA.containsKey("A")) {
-					System.out.println(cacheAcfg.getName()+" New created");
-					cacheA.put("A", this.toString());
+				if(!cache.containsKey("A")) {
+					System.out.println(cachecfg.getName()+" New created");
+					cache.put("A", this.toString());
 				}
-				System.out.println("Cache "+cacheAcfg.getName()+", key A: "+cacheA.get("A"));
-				cacheA.put("B", new Date().toString());
+				System.out.println("Cache "+cachecfg.getName()+", key A: "+cache.get("A"));
+				cache.put("B", new Date().toString());
 				
 			}catch (Exception e) { e.printStackTrace();	}
 			
 			
 			try {
+				String cacheName = "CacheInMemoryB";
+				CacheConfiguration<String, String> cachecfg = new CacheConfiguration<>();
+				cachecfg.setName(cacheName);
 				
-				CacheConfiguration<String, String> cacheBcfg = new CacheConfiguration<>();
-				cacheBcfg.setName("CacheB");
+				IgniteCache<String, String> cache = igniteClient.getOrCreateCache(cachecfg);
 				
-				IgniteCache<String, String> cacheB = igniteClient.getOrCreateCache(cacheBcfg);
-				
-				if(!cacheB.containsKey("A")) {
-					System.out.println(cacheBcfg.getName()+" New created");
-					cacheB.put("A", "A normal string value");
+				/*
+				try {
+					cache.containsKey("A");
+				}catch(IgniteException ex) {
+					if(ex.getCause() instanceof CacheInvalidStateException) {
+				*/
+				if(cache.lostPartitions().size()>0) {
+					int before = cache.lostPartitions().size();
+					igniteClient.resetLostPartitions(Arrays.asList(cacheName));
+					int after = cache.lostPartitions().size();
 				}
-				System.out.println("Cache "+cacheBcfg.getName()+", key A: "+cacheB.get("A"));
-				cacheB.put("B", new Date().toString());
+						
+				/*	
+						int i = 0;
+					}
+				}
+				*/
+				
+				if(!cache.containsKey("A")) {
+					System.out.println(cachecfg.getName()+" New created");
+					cache.put("A", "A normal string value");
+				}
+				System.out.println("Cache "+cachecfg.getName()+", key A: "+cache.get("A"));
+				cache.put("B", new Date().toString());
 				
 			}catch (Exception e) { e.printStackTrace();	}
 			
 			
 			try {
+				String cacheName = "CachePersistentA";
+				CacheConfiguration<String, String> cachecfg = new CacheConfiguration<>();
+				cachecfg.setName(cacheName);
+				cachecfg.setDataRegionName("persistent_region");
+				cachecfg.setBackups(1);
 				
-				CacheConfiguration<String, String> cachePersistentAcfg = new CacheConfiguration<>();
-				cachePersistentAcfg.setName("CachePersistentA");
-				cachePersistentAcfg.setDataRegionName("persistent_region");
+				IgniteCache<String, String> cache = igniteClient.getOrCreateCache(cachecfg);
 				
-				IgniteCache<String, String> cachePersistentA = igniteClient.getOrCreateCache(cachePersistentAcfg);
-				
-				if(!cachePersistentA.containsKey("A")) {
-					System.out.println(cachePersistentAcfg.getName()+" New created");
-					cachePersistentA.put("A", "Persistent value in persistent cache in persistent data region");
+				try {
+					cache.containsKey("A");
+				}catch(IgniteException ex) {
+					if(ex.getCause() instanceof CacheInvalidStateException) {
+						
+						try {
+							
+							int before = cache.lostPartitions().size();
+							igniteClient.resetLostPartitions(Arrays.asList(cacheName));
+							int after = cache.lostPartitions().size();
+							
+							
+							int i = 0;
+							
+						}catch(Exception e) {
+							e.printStackTrace();
+						}
+						
+					}
 				}
-				System.out.println("Cache "+cachePersistentAcfg.getName()+", key A: "+cachePersistentA.get("A"));
-				cachePersistentA.put("B", new Date().toString());
+				
+				if(!cache.containsKey("A")) {
+					System.out.println(cachecfg.getName()+" New created");
+					cache.put("A", "Persistent value in persistent cache in persistent data region");
+				}
+				System.out.println("Cache "+cachecfg.getName()+", key A: "+cache.get("A"));
+				cache.put("B", new Date().toString());
 				
 			}catch (Exception e) { e.printStackTrace();	}
 
