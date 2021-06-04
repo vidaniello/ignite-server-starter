@@ -2,8 +2,11 @@ package com.github.vidaniello.igniteserver;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import org.apache.ignite.Ignite;
+import org.apache.ignite.IgniteCache;
+import org.apache.ignite.cache.CachePeekMode;
 import org.apache.ignite.cluster.BaselineNode;
 import org.apache.ignite.cluster.ClusterNode;
 
@@ -59,6 +62,25 @@ private static final int maxIterationWaitUntilNoseIsDown = 20;
 						ignite.cluster().setBaselineTopology(newBaseline);
 						
 						System.out.println("node ["+consistenId+"] dropped fom baseline.");
+						
+						
+						Thread.sleep(5000);
+						//Try resetLostPartitions caches who have lost partitions
+						for(String cacheName : ignite.cacheNames()) {
+							IgniteCache<?, ?> icache = ignite.cache(cacheName);
+							if(icache.lostPartitions().size()>0)
+								try {
+									System.out.println("cache "+cacheName+" has lost partitions, try to resetLostPartitions...");
+									ignite.resetLostPartitions(Arrays.asList(cacheName));
+									System.out.println("cache "+cacheName+" resetLostPartitions complete!");
+								}catch(Exception e) {
+									System.err.println("cache "+cacheName+" resetLostPartitions error:");
+									e.printStackTrace();
+								}
+
+						}
+						
+						
 					}else
 						throw new Exception("node ["+consistenId+"] not finded in the current baseline.");
 				}
