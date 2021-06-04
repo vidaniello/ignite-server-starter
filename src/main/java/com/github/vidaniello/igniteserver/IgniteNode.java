@@ -39,6 +39,8 @@ import org.apache.ignite.cluster.ClusterMetrics;
 import org.apache.ignite.cluster.ClusterNode;
 import org.apache.ignite.cluster.ClusterState;
 import org.apache.ignite.configuration.IgniteConfiguration;
+import org.apache.ignite.failure.FailureContext;
+import org.apache.ignite.failure.FailureHandler;
 import org.apache.ignite.internal.IgnitionMXBeanAdapter;
 import org.apache.ignite.internal.processors.cluster.baseline.autoadjust.BaselineAutoAdjustStatus;
 import org.apache.ignite.internal.util.spring.IgniteSpringHelper;
@@ -256,6 +258,7 @@ public class IgniteNode implements LifecycleBean{
 			Collection<IgniteConfiguration> icc = ib.get1();
 			if(!icc.isEmpty()) 
 				conf = icc.iterator().next();
+			
 		}else
 			conf = new IgniteConfiguration();
 		
@@ -265,6 +268,7 @@ public class IgniteNode implements LifecycleBean{
 		if(consistentId!=null)
 			conf.setConsistentId(consistentId);
 				
+		
 		
 		//Discovery section
 		if(tcpDiscoveryLocalPortRange!=null || tcpDiscoveryLocalPort!=null || 
@@ -309,6 +313,8 @@ public class IgniteNode implements LifecycleBean{
 			
 			conf.setCommunicationSpi(commSpi);
 		}
+		
+		
 		
 	}
 	
@@ -466,7 +472,6 @@ public class IgniteNode implements LifecycleBean{
 			
 			
 			
-			
 			str.append("Node consistent ID---------: "+ic.getConsistentId()+"\n");
 			str.append("Node UUID------------------: "+igniteInstance.cluster().localNode().id()+"\n");
 			str.append("Node version---------------: "+igniteInstance.version()+"\n");
@@ -602,22 +607,29 @@ public class IgniteNode implements LifecycleBean{
 			if(igniteInstance.cluster().state()!=ClusterState.INACTIVE) {
 			
 				String cacheNames = "";
+				String cacheWithLostPartitions = "";
 				if(!igniteInstance.cacheNames().isEmpty()) {
 					for(String cacheName : igniteInstance.cacheNames()) {
 						IgniteCache<?, ?> icache = igniteInstance.cache(cacheName);
 						cacheNames += cacheName+"("+icache.size(CachePeekMode.PRIMARY)+"), ";
-						//igniteInstance.resetLostPartitions(Arrays.asList(cacheName));
-						Collection<Integer> lpart = icache.lostPartitions();
-						
-						int i = 0;
-						
+						if(icache.lostPartitions().size()>0) 
+							cacheWithLostPartitions += cacheName+"("+icache.lostPartitions().size()+"), ";
+							
 					}
-					cacheNames = cacheNames.substring(0, cacheNames.length()-2);
+					
+					if(!cacheNames.isEmpty()) 
+						cacheNames = cacheNames.substring(0, cacheNames.length()-2);
+					
+					if(!cacheWithLostPartitions.isEmpty()) 
+						cacheWithLostPartitions = cacheWithLostPartitions.substring(0, cacheWithLostPartitions.length()-2);
 				}
 				
 				
 				
 				str.append("Cache names (nElements)----: "+cacheNames+"\n");
+				if(!cacheWithLostPartitions.isEmpty()) 
+					str.append("Caches with lost partitions: "+cacheWithLostPartitions+"\n");
+				
 			}
 			
 			/*
