@@ -1,7 +1,12 @@
 package com.github.vidaniello.igniteserver;
 
+import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.concurrent.TimeUnit;
+
+import javax.cache.expiry.CreatedExpiryPolicy;
+import javax.cache.expiry.Duration;
 
 import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCache;
@@ -97,6 +102,7 @@ public class ClientTest {
 				String cacheName = "CacheInMemoryB";
 				CacheConfiguration<String, String> cachecfg = new CacheConfiguration<>();
 				cachecfg.setName(cacheName);
+				
 				
 				IgniteCache<String, String> cache = igniteClient.getOrCreateCache(cachecfg);
 				
