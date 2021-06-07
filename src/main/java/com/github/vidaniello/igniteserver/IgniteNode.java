@@ -485,8 +485,8 @@ public class IgniteNode implements LifecycleBean{
 			long executionTime = cm.getUpTime();
 			long days = TimeUnit.MILLISECONDS.toDays(executionTime);
 			long hour = TimeUnit.MILLISECONDS.toHours(executionTime)-TimeUnit.DAYS.toHours(days);
-			long minutes = TimeUnit.MILLISECONDS.toMinutes(executionTime)-TimeUnit.HOURS.toMinutes(hour);
-			long seconds = TimeUnit.MILLISECONDS.toSeconds(executionTime)-TimeUnit.MINUTES.toSeconds(minutes);			
+			long minutes = TimeUnit.MILLISECONDS.toMinutes(executionTime)-TimeUnit.HOURS.toMinutes(hour)-TimeUnit.DAYS.toMinutes(days);
+			long seconds = TimeUnit.MILLISECONDS.toSeconds(executionTime)-TimeUnit.MINUTES.toSeconds(minutes)-TimeUnit.HOURS.toSeconds(hour)-TimeUnit.DAYS.toSeconds(days);			
 			String upTime = days+".days "+hour+".hours "+minutes+".mins "+seconds+".secs";
 			
 			str.append("Cluster ID-----------------: "+igniteInstance.cluster().id()+"\n");
