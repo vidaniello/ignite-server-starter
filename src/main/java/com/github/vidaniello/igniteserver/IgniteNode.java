@@ -318,6 +318,11 @@ public class IgniteNode implements LifecycleBean{
 		
 	}
 	
+	public Map<String, String> getClientConfig(){
+		
+		return null;
+	}
+	
 	public synchronized void stopNode() {
 		try {
 			if(igniteInstance!=null)
