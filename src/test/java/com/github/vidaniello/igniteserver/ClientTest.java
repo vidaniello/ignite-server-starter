@@ -1,30 +1,16 @@
 package com.github.vidaniello.igniteserver;
 
-import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.Date;
-import java.util.concurrent.TimeUnit;
-
-import javax.cache.expiry.CreatedExpiryPolicy;
-import javax.cache.expiry.Duration;
-
 import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCache;
 import org.apache.ignite.IgniteException;
 import org.apache.ignite.Ignition;
-import org.apache.ignite.cache.CacheMetrics;
-import org.apache.ignite.client.ClientAddressFinder;
 import org.apache.ignite.client.IgniteClient;
 import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.ignite.configuration.ClientConfiguration;
 import org.apache.ignite.configuration.IgniteConfiguration;
 import org.apache.ignite.internal.processors.cache.CacheInvalidStateException;
-import org.apache.ignite.services.Service;
-import org.apache.ignite.services.ServiceConfiguration;
-import org.apache.ignite.services.ServiceContext;
-import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
-import org.apache.ignite.spi.discovery.tcp.ipfinder.multicast.TcpDiscoveryMulticastIpFinder;
-import org.jetbrains.annotations.TestOnly;
 import org.junit.Ignore;
 import org.junit.Test;
 
