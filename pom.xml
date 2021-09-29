@@ -10,7 +10,8 @@
   	<maven.compiler.source>1.8</maven.compiler.source>
   	<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   	<maven.javadoc.skip>true</maven.javadoc.skip>
-  	<ignite.version>2.10.0</ignite.version>
+  	<ignite.version>2.11.0</ignite.version>
+  	<vertx.version>4.1.4</vertx.version>
   </properties>
   
   
@@ -20,12 +21,12 @@
   	<dependency>
 		<groupId>io.vertx</groupId>
 		<artifactId>vertx-core</artifactId>
-		<version>4.0.3</version>
+		<version>${vertx.version}</version>
 	</dependency>
 	<dependency>
 		<groupId>io.vertx</groupId>
 		<artifactId>vertx-web</artifactId>
-		<version>4.0.3</version>
+		<version>${vertx.version}</version>
 	</dependency>
   
     <dependency>
