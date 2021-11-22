@@ -14,7 +14,9 @@
   	<vertx.version>4.1.4</vertx.version>
   </properties>
   
-  
+  <scm>
+  	<developerConnection>scm:</developerConnection>
+  </scm>
   
   <dependencies>
   
