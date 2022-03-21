@@ -16,6 +16,7 @@
 
 	<scm>
 		<developerConnection>scm:</developerConnection>
+		<url>https://github.com/vidaniello/ignite-server-starter</url>
 	</scm>
 
 	<dependencies>
