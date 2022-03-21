@@ -15,7 +15,7 @@
 	</properties>
 
 	<scm>
-		<developerConnection>scm:</developerConnection>
+		<developerConnection>scm:git:ssh://git@github.com/vidaniello/ignite-server-starter.git</developerConnection>
 		<url>https://github.com/vidaniello/ignite-server-starter</url>
 	</scm>
 
